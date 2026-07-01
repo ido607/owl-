@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>דואר־הינשופים</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --parchment:#EFE3C8; --parchment2:#fbf6e8; --ink:#241F1C; --leather:#5C3A21;
+    --wax:#7A1F2B; --forest:#2F4538; --gold:#8A6A1E; --night:#1B1B2F;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; font-family:"Palatino Linotype","Iowan Old Style",Georgia,serif;
+    background:radial-gradient(circle at 50% 0%, #2a2440 0%, #1B1B2F 55%, #100f1c 100%);
+    color:var(--ink); display:flex; justify-content:center; padding:32px 16px;
+  }
+  .wrap{width:100%; max-width:440px;}
+  .center{text-align:center;}
+  h1{color:var(--parchment); font-size:2rem; margin:8px 0 4px; font-family:"Iowan Old Style",Georgia,serif;}
+  .sub{color:#C9BFA0; font-size:.9rem; margin-bottom:28px;}
+  .card{
+    background:radial-gradient(circle at 20% 10%, rgba(255,255,255,.15), transparent 40%),
+               radial-gradient(circle at 90% 90%, rgba(0,0,0,.08), transparent 50%), var(--parchment);
+    border:1px solid rgba(90,60,30,.35); border-radius:3px;
+    box-shadow:0 10px 25px rgba(20,15,5,.35), inset 0 2px 0 rgba(255,255,255,.3);
+    padding:20px; margin-bottom:14px;
+  }
+  .card h2{margin:0 0 10px; font-size:1.15rem; display:flex; align-items:center; gap:8px;}
+  .card p{font-size:.88rem; color:#4a3f2f; line-height:1.5; margin:0 0 14px;}
+  button{font-family:inherit; cursor:pointer;}
+  .btn{width:100%; padding:11px; border:none; border-radius:3px; font-size:.9rem;}
+  .btn-dark{background:var(--ink); color:var(--parchment);}
+  .btn-wax{background:var(--wax); color:var(--parchment);}
+  .btn-ghost{background:rgba(239,227,200,.12); color:var(--parchment); border:none; padding:11px; border-radius:3px; font-size:.9rem;}
+  label{display:block; font-size:.75rem; color:#5c4a30; margin-bottom:4px;}
+  input,textarea{
+    width:100%; padding:10px 12px; border-radius:3px; border:1px solid #b8a878;
+    background:var(--parchment2); color:var(--ink); font-size:.9rem; font-family:inherit; outline:none;
+    margin-bottom:14px;
+  }
+  input[disabled]{background:#e8ddc0;}
+  textarea{resize:none;}
+  .pin{letter-spacing:.5em; font-family:monospace; text-align:center;}
+  .charcount{text-align:left; font-size:.72rem; color:#7a6a4a; margin-top:-10px; margin-bottom:14px;}
+  .header{display:flex; align-items:center; justify-content:space-between; margin-bottom:22px;}
+  .back{color:var(--parchment); background:rgba(239,227,200,.12); border:none; border-radius:20px; padding:6px 14px; font-size:.8rem;}
+  .htitle{color:var(--parchment); font-size:1.05rem; display:flex; align-items:center; gap:8px;}
+  .seal-wrap{display:flex; flex-direction:column; align-items:center; gap:8px; margin-top:6px;}
+  .seal{
+    width:66px; height:66px; border-radius:50%; border:2px solid rgba(0,0,0,.25);
+    display:flex; align-items:center; justify-content:center; color:var(--parchment);
+    font-size:1.5rem; font-weight:700; box-shadow:0 3px 0 rgba(0,0,0,.35), 0 6px 10px rgba(0,0,0,.35);
+    transition:transform .15s;
+  }
+  .seal:active{transform:scale(.94) rotate(-2deg); box-shadow:inset 0 3px 6px rgba(0,0,0,.5);}
+  .seal-hint{font-size:.75rem; color:#7a6a4a;}
+  .err{color:var(--wax); font-size:.85rem; margin-bottom:10px;}
+  .letter{display:flex; align-items:center; justify-content:space-between; width:100%; background:none; border:none; padding:0; text-align:right;}
+  .dot{width:14px; height:14px; border-radius:50%; display:inline-block; box-shadow:0 1px 2px rgba(0,0,0,.4); margin-left:10px;}
+  .lrow{display:flex; align-items:center;}
+  .ltext{white-space:pre-wrap; line-height:1.6; font-size:.9rem; border-top:1px dashed #b8a878; margin-top:10px; padding-top:10px;}
+  .del{background:none; border:none; color:var(--wax); font-size:.78rem; display:flex; align-items:center; gap:4px; margin-top:8px; float:left;}
+  .colors{display:flex; gap:12px; margin-bottom:18px;}
+  .cdot{width:26px; height:26px; border-radius:50%; border:2px solid transparent; cursor:pointer;}
+  .cdot.active{border-color:var(--ink); transform:scale(1.15);}
+  .toast{position:fixed; top:20px; left:50%; transform:translateX(-50%); background:var(--parchment); color:var(--ink); padding:8px 18px; border-radius:20px; font-size:.85rem; box-shadow:0 4px 12px rgba(0,0,0,.3); z-index:50;}
+  .footer{text-align:center; color:#5c5470; font-size:.68rem; margin-top:28px;}
+  .owl{display:inline-block;}
+  .empty{text-align:center; padding:36px 16px; color:#5c4a30; font-size:.88rem;}
+  .configwarn{background:#3a2c2c; color:#f0d9d9; border:1px solid #7A1F2B; padding:14px; border-radius:4px; font-size:.82rem; margin-bottom:20px; line-height:1.6;}
+  @media (prefers-reduced-motion: no-preference){
+    .owlfloat{animation:floaty 6s ease-in-out infinite;}
+  }
+  @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+</style>
+</head>
+<body>
+<div class="wrap" id="root"></div>
+
+<script>
+/* =========================================================
+   1) CONFIGURATION — fill these in after creating a free
+      Supabase project (see setup instructions further down)
+   ========================================================= */
+const SUPABASE_URL = "PASTE_YOUR_SUPABASE_URL_HERE";
+const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
+/* ========================================================= */
+
+const CONFIGURED = !SUPABASE_URL.startsWith("PASTE_") && !SUPABASE_ANON_KEY.startsWith("PASTE_");
+const sb = CONFIGURED ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+const SEAL_COLORS = { wax: "#7A1F2B", forest: "#2F4538", gold: "#8A6A1E" };
+const OWL_SVG = (color, size=40) => `
+  <svg class="owl" width="${size}" height="${size}" viewBox="0 0 64 64" fill="none">
+    <ellipse cx="32" cy="36" rx="20" ry="22" fill="${color}" opacity="0.95"/>
+    <circle cx="23" cy="28" r="8" fill="#EFE3C8"/><circle cx="41" cy="28" r="8" fill="#EFE3C8"/>
+    <circle cx="23" cy="28" r="3.4" fill="${color}"/><circle cx="41" cy="28" r="3.4" fill="${color}"/>
+    <path d="M32 32 L28 40 L36 40 Z" fill="#B8860B"/>
+    <path d="M14 20 L22 26 L16 30 Z" fill="${color}"/><path d="M50 20 L42 26 L48 30 Z" fill="${color}"/>
+    <path d="M24 52 Q32 58 40 52 L38 46 Q32 50 26 46 Z" fill="#B8860B" opacity="0.8"/>
+  </svg>`;
+
+const keyify = (n) => n.trim().toLowerCase().replace(/\s+/g," ");
+const timeAgo = (ts) => {
+  const diff = Math.max(0, Date.now()-ts), min = Math.floor(diff/60000);
+  if (min<1) return "הרגע נחת";
+  if (min<60) return `לפני ${min} דק׳`;
+  const hr = Math.floor(min/60);
+  if (hr<24) return `לפני ${hr} שע׳`;
+  const day = Math.floor(hr/24);
+  if (day<30) return `לפני ${day} ימים`;
+  return new Date(ts).toLocaleDateString("he-IL");
+};
+
+async function storeGet(key){
+  const { data, error } = await sb.from("owlpost_store").select("value").eq("key", key).maybeSingle();
+  if (error || !data) return null;
+  return data.value;
+}
+async function storeSet(key, value){
+  const { error } = await sb.from("owlpost_store").upsert({ key, value }, { onConflict: "key" });
+  if (error) throw error;
+}
+
+const state = {
+  view: "home",
+  toastMsg: null,
+  profile: null,
+  letters: [],
+  openLetterId: null,
+  target: "",
+  targetLocked: false,
+  sealColor: "wax",
+  copied: false,
+  busy: false,
+  authError: "",
+  sendError: "",
+};
+
+function showToast(msg){
+  state.toastMsg = msg; render();
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>{ state.toastMsg=null; render(); }, 2200);
+}
+
+function goHome(){ state.view="home"; state.openLetterId=null; state.authError=""; state.sendError=""; render(); }
+
+async function handleEnterMailbox(){
+  state.authError = "";
+  const name = document.getElementById("f-name").value.trim();
+  const pin = document.getElementById("f-pin").value.trim();
+  if (name.length<2 || name.length>24){ state.authError="שם התיבה צריך להכיל בין 2 ל-24 תווים."; render(); return; }
+  if (!/^\d{4}$/.test(pin)){ state.authError="הקוד הוא בדיוק 4 ספרות."; render(); return; }
+  const k = keyify(name);
+  state.busy = true; render();
+  try{
+    const raw = await storeGet(`profile:${k}`);
+    const existing = raw ? JSON.parse(raw) : null;
+    if (existing){
+      if (existing.pin !== pin){ state.authError="הקוד אינו תואם לתיבה הזו."; state.busy=false; render(); return; }
+      state.profile = { name: existing.name, key: k, pin };
+    } else {
+      const p = { name, pin, createdAt: Date.now() };
+      await storeSet(`profile:${k}`, JSON.stringify(p));
+      state.profile = { name, key: k, pin };
+      showToast("התיבה נפתחה בהצלחה");
+    }
+    const mraw = await storeGet(`messages:${k}`);
+    state.letters = (mraw ? JSON.parse(mraw) : []).sort((a,b)=>b.ts-a.ts);
+    state.view = "mailbox"; state.busy=false; render();
+  }catch(e){
+    state.authError = "משהו השתבש בדרך לתיבה. נסו שוב."; state.busy=false; render();
+  }
+}
+
+async function deleteLetter(id){
+  if (!state.profile) return;
+  const updated = state.letters.filter(l=>l.id!==id);
+  state.letters = updated; render();
+  try{ await storeSet(`messages:${state.profile.key}`, JSON.stringify(updated)); }
+  catch(e){ showToast("לא הצלחנו למחוק, נסו שוב"); }
+}
+
+async function copyShareText(){
+  if (!state.profile) return;
+  const text = `שלחו לי מכתב אנונימי דרך דואר־הינשופים 🦉\nפתחו את האתר ובחרו "שילחו מכתב", והקלידו את השם: ${state.profile.name}`;
+  try{ await navigator.clipboard.writeText(text); state.copied=true; render(); setTimeout(()=>{state.copied=false; render();},1800); }
+  catch(e){ showToast("לא הצלחנו להעתיק, סמנו ידנית"); }
+}
+
+async function handleSend(){
+  state.sendError = "";
+  const target = document.getElementById("f-target").value.trim();
+  const message = document.getElementById("f-message").value;
+  if (target.length<2){ state.sendError="כתבו את שם התיבה שאליה שולחים."; render(); return; }
+  if (!message.trim()){ state.sendError="המכתב ריק. כתבו כמה מילים לפני שהינשוף יוצא לדרך."; render(); return; }
+  if (message.length>500){ state.sendError="המכתב ארוך מדי (עד 500 תווים)."; render(); return; }
+  const k = keyify(target);
+  state.busy = true; render();
+  try{
+    const praw = await storeGet(`profile:${k}`);
+    if (!praw){ state.sendError="לא נמצאה תיבה בשם הזה. בדקו את האיות מול השולח/ת אליכם."; state.busy=false; render(); return; }
+    const mraw = await storeGet(`messages:${k}`);
+    const msgs = mraw ? JSON.parse(mraw) : [];
+    msgs.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2,8)}`, text: message.trim(), ts: Date.now(), seal: state.sealColor });
+    await storeSet(`messages:${k}`, JSON.stringify(msgs));
+    state.busy = false; state.target = target; state.view = "sent"; render();
+  }catch(e){
+    state.sendError = "הינשוף נבהל ולא המריא. נסו שוב."; state.busy=false; render();
+  }
+}
+
+function render(){
+  const root = document.getElementById("root");
+  if (!CONFIGURED){
+    root.innerHTML = `
+      <div class="center">${OWL_SVG("#EFE3C8",64)}<h1>דואר־הינשופים</h1></div>
+      <div class="configwarn">
+        <strong>האתר עדיין לא מחובר למסד נתונים.</strong><br/>
+        כדי שהאפליקציה תוכל לשמור תיבות ומכתבים באמת, יש להזין SUPABASE_URL ו-SUPABASE_ANON_KEY בראש קובץ ה-HTML (חפשו את מילה "CONFIGURATION"). ראו הוראות ההתקנה שנשלחו בצ'אט.
+      </div>`;
+    return;
+  }
+
+  if (state.toastMsg){
+    const t = document.createElement("div"); t.className="toast"; t.textContent=state.toastMsg;
+    root.parentElement.appendChild(t);
+    setTimeout(()=>{ t.remove(); }, 2200);
+  }
+
+  let html = "";
+
+  if (state.view === "home"){
+    html = `
+      <div class="center">
+        <div class="owlfloat">${OWL_SVG("#EFE3C8",72)}</div>
+        <h1>דואר־הינשופים</h1>
+        <p class="sub">מכתבים אנונימיים, נישאים על כנפי ינשוף. אף אחד לא יודע מי שלח — רק מי מקבל.</p>
+      </div>
+      <div class="card">
+        <h2>✉️ התיבה שלי</h2>
+        <p>פתחו תיבת דואר על שמכם וקבלו מכתבים אנונימיים מכל מי שיש לו את השם והקוד שלכם.</p>
+        <button class="btn btn-dark" onclick="state.view='login'; render()">פתחו או היכנסו לתיבה</button>
+      </div>
+      <div class="card">
+        <h2>🪶 שילחו מכתב</h2>
+        <p>יודעים למי לכתוב? הקלידו את שם התיבה שלו ושלחו מכתב אנונימי לגמרי.</p>
+        <button class="btn btn-wax" onclick="state.target=''; state.targetLocked=false; state.view='send'; render()">כתבו מכתב אנונימי</button>
+      </div>`;
+  }
+
+  else if (state.view === "login"){
+    html = `
+      <div class="header">
+        <button class="back" onclick="goHome()">→ חזרה</button>
+        <div class="htitle">${OWL_SVG("#EFE3C8",22)} פתיחת תיבה</div><div style="width:60px"></div>
+      </div>
+      <div class="card">
+        <p>בחרו שם לתיבה וקוד בן 4 ספרות. אם התיבה כבר קיימת, אותו קוד ייתן לכם כניסה אליה. זה לא אבטחה אמיתית — רק שלא כל אחד יוכל לקרוא את המכתבים שלכם.</p>
+        <label>שם התיבה</label>
+        <input id="f-name" placeholder="למשל: תמר" maxlength="24"/>
+        <label>קוד סודי (4 ספרות)</label>
+        <input id="f-pin" class="pin" placeholder="••••" maxlength="4" inputmode="numeric"/>
+        ${state.authError ? `<div class="err">${state.authError}</div>` : ""}
+        <div class="seal-wrap">
+          <button class="seal" style="background:radial-gradient(circle at 35% 30%, #241F1Cdd, #241F1C 60%, #00000055)" onclick="handleEnterMailbox()" ${state.busy?"disabled":""}>🔒</button>
+          <div class="seal-hint">${state.busy?"פותחים את השער...":"לחצו על החותם כדי להיכנס"}</div>
+        </div>
+      </div>`;
+  }
+
+  else if (state.view === "mailbox" && state.profile){
+    const lettersHtml = state.letters.length === 0
+      ? `<div class="card empty">${OWL_SVG("#8a7a55",40)}<div style="margin-top:10px">התיבה ריקה עדיין. שתפו את השם שלכם כדי שינשופים ידעו לאן לטוס.</div></div>`
+      : state.letters.map(l=>{
+          const isOpen = state.openLetterId===l.id;
+          const color = SEAL_COLORS[l.seal] || SEAL_COLORS.wax;
+          return `
+          <div class="card">
+            <button class="letter" onclick="state.openLetterId=${isOpen?"null":`'${l.id}'`}; render()">
+              <span class="lrow"><span class="dot" style="background:${color}"></span>${isOpen?"מכתב פתוח":"מכתב חתום"}</span>
+              <span style="font-size:.75rem;color:#7a6a4a">${timeAgo(l.ts)}</span>
+            </button>
+            ${isOpen ? `
+              <div class="ltext">${l.text.replace(/</g,"&lt;")}</div>
+              <button class="del" onclick="deleteLetter('${l.id}')">🗑 מחיקה</button>
+              <div style="clear:both"></div>
+            ` : ""}
+          </div>`;
+        }).join("");
+
+    html = `
+      <div class="header">
+        <button class="back" onclick="goHome()">→ חזרה</button>
+        <div class="htitle">${OWL_SVG("#EFE3C8",22)} התיבה של ${state.profile.name}</div><div style="width:60px"></div>
+      </div>
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div><div style="font-size:.75rem;color:#5c4a30">שתפו כדי לקבל מכתבים</div><div style="font-size:.9rem">העתיקו הזמנה לחברים שלכם</div></div>
+        <button class="btn-ghost" style="background:var(--ink);color:var(--parchment);flex-shrink:0;padding:9px 12px;font-size:.78rem" onclick="copyShareText()">${state.copied?"✓ הועתק":"⧉ העתיקו הזמנה"}</button>
+      </div>
+      ${lettersHtml}`;
+  }
+
+  else if (state.view === "send"){
+    html = `
+      <div class="header">
+        <button class="back" onclick="goHome()">→ חזרה</button>
+        <div class="htitle">${OWL_SVG("#EFE3C8",22)} כתיבת מכתב</div><div style="width:60px"></div>
+      </div>
+      <div class="card">
+        <label>אל (שם התיבה)</label>
+        <input id="f-target" placeholder="שם הנמען/ת" maxlength="24" value="${state.target.replace(/"/g,"&quot;")}" ${state.targetLocked?"disabled":""}/>
+        <label>המכתב</label>
+        <textarea id="f-message" rows="6" maxlength="500" placeholder="כתבו כאן את המכתב שלכם..." oninput="document.getElementById('cc').textContent=this.value.length+'/500'"></textarea>
+        <div class="charcount"><span id="cc">0/500</span></div>
+        <label>צבע החותם</label>
+        <div class="colors">
+          ${Object.entries(SEAL_COLORS).map(([k,v])=>`<span class="cdot ${state.sealColor===k?"active":""}" style="background:${v}" onclick="state.sealColor='${k}'; render()"></span>`).join("")}
+        </div>
+        ${state.sendError ? `<div class="err">${state.sendError}</div>` : ""}
+        <div class="seal-wrap">
+          <button class="seal" style="background:radial-gradient(circle at 35% 30%, ${SEAL_COLORS[state.sealColor]}dd, ${SEAL_COLORS[state.sealColor]} 60%, #00000055)" onclick="handleSend()" ${state.busy?"disabled":""}>🕊</button>
+          <div class="seal-hint">${state.busy?"הינשוף ממריא...":"לחצו על החותם כדי לשלוח"}</div>
+        </div>
+      </div>`;
+  }
+
+  else if (state.view === "sent"){
+    html = `
+      <div class="center">
+        <div class="owlfloat">${OWL_SVG("#EFE3C8",64)}</div>
+        <h1 style="font-size:1.6rem">הינשוף יצא לדרך</h1>
+        <p class="sub">המכתב שלכם נישא לתיבה של <span style="color:#B8860B">${state.target}</span>, בלי שום שם מצורף.</p>
+        <button class="btn btn-wax" style="margin-bottom:10px" onclick="if(!state.targetLocked){state.target='';} state.view='send'; render()">כתבו מכתב נוסף</button>
+        <button class="btn-ghost" style="width:100%" onclick="goHome()">חזרה למסך הבית</button>
+      </div>`;
+  }
+
+  html += `<div class="footer">✦ הודעות נשמרות ללא זיהוי שולח. אין להשתמש באתר להטרדה או תוכן פוגעני.</div>`;
+  root.innerHTML = html;
+
+  // restore URL-prefilled target field value after render, if on send view
+  if (state.view === "send"){
+    const el = document.getElementById("cc");
+    if (el) el.textContent = (document.getElementById("f-message").value.length)+"/500";
+  }
+}
+
+// prefill recipient from ?to= link param
+(function init(){
+  try{
+    const params = new URLSearchParams(window.location.search);
+    const to = params.get("to");
+    if (to){ state.target = to; state.targetLocked = true; state.view = "send"; }
+  }catch(e){}
+  render();
+})();
+</script>
+</body>
+</html>
